@@ -2,11 +2,12 @@
 
 This repository contains my personal configuration files for MPV.net.
 
-![image](https://github.com/user-attachments/assets/d35a47e0-30ed-4045-a5a1-cf76b33dbd63)
+![image](https://github.com/user-attachments/assets/b1660d7c-bd8f-4d6c-aea9-302803e21087)
+
 
 ## Updates
 
-The configurations were last updated on July 26, 2024
+The configurations were last updated on July 27, 2024
 
 ## Dependencies
 
