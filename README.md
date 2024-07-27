@@ -1,4 +1,4 @@
-# MPV-Configs
+# mpvconfigs
 
 This repository contains my personal configuration files for MPV.net.
 
