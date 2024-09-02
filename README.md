@@ -11,7 +11,7 @@ The configurations were last updated on July 31, 2024
 
 ## Dependencies
 
-The configurations are compatible with the following versions of the software:
+The configurations uses:
 
 - **FFmpeg**: v7.0.1
 - **MPV**: v0.38.0-641-g6107112b
