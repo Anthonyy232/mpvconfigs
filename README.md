@@ -13,7 +13,7 @@ The configurations were last updated on July 31, 2024
 
 The configurations uses:
 
-- **FFmpeg**: v7.0.1
+- **FFmpeg**: v7.0.2
 - **MPV**: v0.38.0-641-g6107112b
 - **ModernX ([zydezu](https://github.com/zydezu/ModernX))**: v0.3.6
 - **[Thumbfast](https://github.com/po5/thumbfast)**: Updated on December 8, 2023
