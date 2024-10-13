@@ -7,7 +7,7 @@ This repository contains my personal configuration files for MPV.net.
 
 ## Updates
 
-The configurations were last updated on July 31, 2024
+The configurations were last updated on October 13, 2024
 
 ## Dependencies
 
