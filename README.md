@@ -13,9 +13,9 @@ The configurations were last updated on July 31, 2024
 
 The configurations uses:
 
-- **FFmpeg**: v7.0.2
-- **MPV**: v0.38.0-641-g6107112b
-- **ModernX ([zydezu](https://github.com/zydezu/ModernX))**: v0.3.6
+- **FFmpeg**: v7.1
+- **MPV**: v0.39.0-56-g9791c6d1
+- **ModernX ([zydezu](https://github.com/zydezu/ModernX))**: v0.3.7
 - **[Thumbfast](https://github.com/po5/thumbfast)**: Updated on December 8, 2023
 
 For Thumbfast, original MPV needs to be installed and set in PATH variable to work
