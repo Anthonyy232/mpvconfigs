@@ -40,6 +40,7 @@ local user_opts = {
     donttimeoutonpause = false,     -- whether to disable the hide timeout on pause
     bottomhover = true,             -- if the osc should only display when hovering at the bottom
     raisesubswithosc = true,        -- whether to raise subtitles above the osc when it's shown
+    raisesubamount = 175,           -- how much subtitles rise when the osc is shown
     thumbnailborder = 2,            -- the width of the thumbnail border
     persistentprogress = false,     -- always show a small progress line at the bottom of the screen
     persistentprogressheight = 17,  -- the height of the persistentprogress bar
@@ -61,15 +62,15 @@ local user_opts = {
     titlefontsize = 30,             -- the font size of the title text
     chapterformat = 'Chapter: %s',  -- chapter print format for seekbar-hover. "no" to disable
     dateformat = "%Y-%m-%d",        -- how dates should be formatted, when read from metadata (uses standard lua date formatting)
-    osc_color = '000000',           -- accent of the OSC and the title bar, in format BBGGRR - http://www.tcax.org/docs/ass-specs.htm
+    osc_color = '#000000',           -- accent of the OSC and the title bar, in Hex color format
     OSCfadealpha = 150,             -- alpha of the background box for the OSC
     boxalpha = 75,                  -- alpha of the window title bar
     descriptionfontsize = 19,       -- alpha of the description background box
     descriptionBoxAlpha = 100,      -- alpha of the description background box
 
     -- seekbar settings --
-    seekbarfg_color = 'E39C42',     -- color of the seekbar progress and handle, in format BBGGRR - http://www.tcax.org/docs/ass-specs.htm
-    seekbarbg_color = 'FFFFFF',     -- color of the remaining seekbar, in format BBGGRR - http://www.tcax.org/docs/ass-specs.htm
+    seekbarfg_color = '#E39C42',     -- color of the seekbar progress and handle, in Hex color format
+    seekbarbg_color = '#FFFFFF',     -- color of the remaining seekbar, in Hex color format
     seekbarkeyframes = false,       -- use keyframes when dragging the seekbar
     automatickeyframemode = true,   -- set seekbarkeyframes based on video length to prevent laggy scrubbing on long videos 
     automatickeyframelimit = 600,   -- videos of above this length (in seconds) will have seekbarkeyframes on
@@ -98,6 +99,7 @@ local user_opts = {
     showontop = true,               -- show window on top button
     showinfo = false,               -- show the info button
     downloadbutton = true,          -- show download button for web videos
+    screenshotbutton = false,        -- show screenshot button
     downloadpath = "~~desktop/mpv/downloads", -- the download path for videos
     showyoutubecomments = false,    -- EXPERIMENTAL - not ready
     commentsdownloadpath = "~~desktop/mpv/downloads/comments", -- the download path for the comment JSON file
@@ -136,6 +138,7 @@ local icons = {
   downloading = '\239\134\185',
   ontopon = '\239\142\150',
   ontopoff = '\239\142\149',
+  screenshot = ''
 }
 
 local emoticon = {
@@ -242,10 +245,14 @@ local osc_param = {                         -- calculated by osc_init()
 
 local iconfont = user_opts.iconstyle == 'round' and 'Material-Design-Iconic-Round' or 'Material-Design-Iconic-Font'
 
+local function osc_color_convert(color)
+    return color:sub(6,7) .. color:sub(4,5) ..  color:sub(2,3)
+end
+
 local osc_styles = {
-    TransBg = "{\\blur100\\bord" .. user_opts.OSCfadealpha .. "\\1c&H000000&\\3c&H" .. user_opts.osc_color .. "&}",
-    SeekbarBg = "{\\blur0\\bord0\\1c&H" .. user_opts.seekbarbg_color .. "&}",
-    SeekbarFg = "{\\blur1\\bord1\\1c&H" .. user_opts.seekbarfg_color .. "&}",
+    TransBg = "{\\blur100\\bord" .. user_opts.OSCfadealpha .. "\\1c&H000000&\\3c&H" .. osc_color_convert(user_opts.osc_color) .. "&}",
+    SeekbarBg = "{\\blur0\\bord0\\1c&H" .. osc_color_convert(user_opts.seekbarbg_color) .. "&}",
+    SeekbarFg = "{\\blur1\\bord1\\1c&H" .. osc_color_convert(user_opts.seekbarfg_color) .. "&}",
     VolumebarBg = '{\\blur0\\bord0\\1c&H999999&}',
     VolumebarFg = '{\\blur1\\bord1\\1c&HFFFFFF&}',
     Ctrl1 = '{\\blur0\\bord0\\1c&HFFFFFF&\\3c&HFFFFFF&\\fs36\\fn' .. iconfont .. '}',
@@ -260,7 +267,7 @@ local osc_styles = {
     WinCtrl = '{\\blur1\\bord0.5\\1c&HFFFFFF&\\3c&H0\\fs20\\fnmpv-osd-symbols}',
     elementDown = '{\\1c&H999999&}',
     elementHover = "{\\blur5\\2c&HFFFFFF&}",
-    wcBar = "{\\1c&H" .. user_opts.osc_color .. "}",
+    wcBar = "{\\1c&H" .. osc_color_convert(user_opts.osc_color) .. "}",
 }
 
 -- internal states, do not touch
@@ -1360,7 +1367,7 @@ function checkWebLink()
 
         -- Youtube Return Dislike API
         state.dislikes = ""
-        if path:find('youtu%.?be') then
+        if path:find('youtu%.?be') and (user_opts.showdescription or user_opts.updatetitleyoutubestats) then
             msg.info("WEB: Loading dislike count...")
             local filename = mp.get_property_osd("filename")
             local pattern = "v=([^&]+)"
@@ -1453,7 +1460,7 @@ function checkcomments()
 end
 
 function loadSetOfComments(startIndex) 
-    if (state.jsoncomments < 1) then
+    if (#state.jsoncomments < 1) then
         return
     end
 
@@ -1589,9 +1596,9 @@ function exec_description(args, result)
             return 
         end
 
-        state.localDescriptionClick = mp.get_property("media-title") .. string.gsub(string.gsub(val.stdout, '\r', '\\N') .. state.dislikes, '\n', '\\N')
+        state.localDescriptionClick = mp.get_property("media-title", "") .. string.gsub(string.gsub(val.stdout, '\r', '\\N') .. state.dislikes, '\n', '\\N')
         if (state.dislikes == "") then
-            state.localDescriptionClick = mp.get_property("media-title") .. string.gsub(string.gsub(val.stdout, '\r', '\\N'), '\n', '\\N')
+            state.localDescriptionClick = mp.get_property("media-title", "") .. string.gsub(string.gsub(val.stdout, '\r', '\\N'), '\n', '\\N')
             state.localDescriptionClick = state.localDescriptionClick:sub(1, #state.localDescriptionClick - 2)
         end
         addLikeCountToTitle()
@@ -1694,7 +1701,11 @@ function exec_dislikes(args, result)
         end
 
         if (not state.descriptionLoaded) then
-            state.localDescriptionClick = state.localDescriptionClick .. '\\N' .. state.dislikes
+            if state.localDescriptionClick then
+                state.localDescriptionClick = state.localDescriptionClick .. '\\N' .. state.dislikes
+            else
+                state.localDescriptionClick = state.dislikes
+            end
             state.videoDescription = state.localDescriptionClick
         else
             addLikeCountToTitle()
@@ -1714,7 +1725,7 @@ function commas(number)
  end
 
 function addLikeCountToTitle()
-    if (user_opts.updatetitleyoutubestats) then
+    if (user_opts.showdescription and user_opts.updatetitleyoutubestats) then
         state.viewcount = commas(state.localDescriptionClick:match('Views: (%d+)')) 
         state.likecount = commas(state.localDescriptionClick:match('Likes: (%d+)'))
         if (state.viewcount ~= '' and state.likecount ~= '' and state.dislikecount) then
@@ -1891,7 +1902,11 @@ function show_description(text)
     duration = 10
     if (state.isWebVideo and user_opts.showyoutubecomments) then
         if (state.commentsParsed and user_opts.showyoutubecomments) then
-            state.commentsAdditionalText = '\\N----------\\NPress LEFT/RIGHT to view comments\\N' .. state.maxCommentPages .. ' pages (' .. #state.jsoncomments .. ' comments)'
+            local pageText = "pages"
+            if state.maxCommentPages == 1 then
+                pageText = "page"
+            end
+            state.commentsAdditionalText = '\\N----------\\NPress LEFT/RIGHT to view comments\\N' .. state.maxCommentPages .. ' ' .. pageText .. ' (' .. #state.jsoncomments .. ' comments)'
             text = text .. state.commentsAdditionalText
         else
             text = text .. '\\N----------\\NComments loading...'
@@ -1920,10 +1935,22 @@ function show_description(text)
             state.message_text = state.localDescriptionClick .. state.commentsAdditionalText
             resetDescTimer()
             request_tick()
+            state.scrolledlines = 25
         else
             destroyscrollingkeys()
         end
     end) -- close menu using ESC
+
+    local function returnMessageText()
+        local totalCommentCount = #state.jsoncomments
+        local firstCommentCount = (state.commentsPage - 1) * commentsperpage + 1
+        local lastCommentCount = (state.commentsPage) * commentsperpage
+        if lastCommentCount > totalCommentCount then
+            lastCommentCount = totalCommentCount
+        end
+        loadSetOfComments(firstCommentCount)
+        return 'Comments\\NPage ' .. state.commentsPage .. '/' .. state.maxCommentPages .. ' (' .. firstCommentCount .. '/' .. #state.jsoncomments .. ')\\N----------' .. state.commentDescription:gsub('\n', '\\N') ..  '\\N----------\\NEnd of page\\NPage ' .. state.commentsPage .. '/' .. state.maxCommentPages .. ' (' .. lastCommentCount .. '/' .. totalCommentCount .. ')'
+    end
     
     state.commentsPage = 0
     if (state.isWebVideo and user_opts.showyoutubecomments) then
@@ -1933,12 +1960,10 @@ function show_description(text)
                 if (state.commentsPage == 0) then
                     state.message_text = state.localDescriptionClick .. state.commentsAdditionalText
                 elseif (state.commentsPage > 0) then
-                    loadSetOfComments((state.commentsPage - 1) * commentsperpage + 1)
-                    state.message_text = 'Comments | Page ' .. state.commentsPage .. '/' .. state.maxCommentPages .. ' (' .. (state.commentsPage - 1) * commentsperpage + 1 .. '/' .. #state.jsoncomments .. ')\\N----------' .. state.commentDescription:gsub('\n', '\\N')
+                    state.message_text = returnMessageText()
                 else
                     state.commentsPage = state.maxCommentPages
-                    loadSetOfComments((state.commentsPage - 1) * commentsperpage + 1)
-                    state.message_text = 'Comments | Page ' .. state.commentsPage .. '/' .. state.maxCommentPages .. ' (' .. (state.commentsPage - 1) * commentsperpage + 1 .. '/' .. #state.jsoncomments .. ')\\N----------' .. state.commentDescription:gsub('\n', '\\N')
+                    state.message_text = returnMessageText()
                 end
                 state.scrolledlines = 25
             end
@@ -1952,8 +1977,7 @@ function show_description(text)
                     state.commentsPage = 0
                     state.message_text = state.localDescriptionClick .. state.commentsAdditionalText
                 else
-                    loadSetOfComments((state.commentsPage - 1) * commentsperpage + 1)
-                    state.message_text = 'Comments | Page ' .. state.commentsPage .. '/' .. state.maxCommentPages .. ' (' .. (state.commentsPage - 1) * commentsperpage + 1 .. '/' .. #state.jsoncomments .. ')\\N----------' .. state.commentDescription:gsub('\n', '\\N')    
+                    state.message_text = returnMessageText()
                 end
                 state.scrolledlines = 25
             end
@@ -2265,6 +2289,7 @@ layouts = function ()
     local showloop = user_opts.showloop
     local showinfo = user_opts.showinfo
     local showontop = user_opts.showontop
+    local showscreenshot = user_opts.screenshotbutton
 
     if user_opts.compactmode then
         user_opts.showjump = false
@@ -2388,7 +2413,7 @@ layouts = function ()
 
     if showontop then
         lo = add_layout('tog_ontop')
-        lo.geometry = {x = osc_geo.w - 127 + (showloop and 0 or 50), y = refY - 40, an = 5, w = 24, h = 24}
+        lo.geometry = {x = osc_geo.w - 127 + (showloop and 0 or 45), y = refY - 40, an = 5, w = 24, h = 24}
         lo.style = osc_styles.Ctrl3
         lo.visible = (osc_param.playresx >= 700 - outeroffset)
     end
@@ -2402,14 +2427,21 @@ layouts = function ()
 
     if showinfo then
         lo = add_layout('tog_info')
-        lo.geometry = {x = osc_geo.w - 172 + (showloop and 0 or 50) + (showontop and 0 or 50), y = refY - 40, an = 5, w = 24, h = 24}
+        lo.geometry = {x = osc_geo.w - 172 + (showloop and 0 or 45) + (showontop and 0 or 45), y = refY - 40, an = 5, w = 24, h = 24}
         lo.style = osc_styles.Ctrl3
         lo.visible = (osc_param.playresx >= 500 - outeroffset)
     end
 
+    if showscreenshot then
+        lo = add_layout('screenshot')
+        lo.geometry = {x = osc_geo.w - 217 + (showloop and 0 or 45) + (showontop and 0 or 45) + (showinfo and 0 or 45), y = refY - 40, an = 5, w = 24, h = 24}
+        lo.style = osc_styles.Ctrl3
+        lo.visible = (osc_param.playresx >= 300 - outeroffset)
+    end
+
     if user_opts.downloadbutton then
         lo = add_layout('download')
-        lo.geometry = {x = osc_geo.w - 217 + (showloop and 0 or 50) + (showontop and 0 or 50) + (showinfo and 0 or 50), y = refY - 40, an = 5, w = 24, h = 24}
+        lo.geometry = {x = osc_geo.w - 262 + (showloop and 0 or 45) + (showontop and 0 or 45) + (showinfo and 0 or 45) + (showscreenshot and 0 or 45), y = refY - 40, an = 5, w = 24, h = 24}
         lo.style = osc_styles.Ctrl3
         lo.visible = (osc_param.playresx >= 400 - outeroffset)
     end
@@ -2871,7 +2903,7 @@ function osc_init()
             return (icons.download)
         end
     end
-    ne.visible = (osc_param.playresx >= 900 - outeroffset - (user_opts.showloop and 0 or 100) - (user_opts.showontop and 0 or 100) - (user_opts.showinfo and 0 or 100)) and state.isWebVideo
+    ne.visible = (osc_param.playresx >= 1100 - outeroffset - (user_opts.showloop and 0 or 100) - (user_opts.showontop and 0 or 100) - (user_opts.showinfo and 0 or 100) - (user_opts.showscreenshot and 0 or 100)) and state.isWebVideo
     ne.tooltip_style = osc_styles.Tooltip
     ne.tooltipF = function ()
         local msg = state.fileSizeNormalised
@@ -2943,6 +2975,18 @@ function osc_init()
             else
                 show_message("\\N{\\an9}Can't be downloaded")
             end
+        end
+
+    --screenshot
+    ne = new_element('screenshot', 'button')
+    ne.content = icons.screenshot
+    ne.visible = (osc_param.playresx >= 900 - outeroffset - (user_opts.showloop and 0 or 100) - (user_opts.showontop and 0 or 100) - (user_opts.showinfo and 0 or 100))
+    ne.eventresponder['mbtn_left_up'] =
+        function ()
+            local tempSubPosition = mp.get_property('sub-pos')
+            mp.commandv('set', 'sub-pos', 100)
+            mp.command('screenshot') -- this takes screenshots with subs, remove video to take screenshots without subs
+            mp.commandv('set', 'sub-pos', tempSubPosition)
         end
 
     --tog_info
@@ -3067,15 +3111,15 @@ function osc_init()
             end
 
         end
-    ne.eventresponder['mbtn_left_down'] =
-        function (element)
-            element.state.mbtnleft = true
-            mp.commandv('seek', get_slider_value(element), 'absolute-percent')
-        end
-    ne.eventresponder['shift+mbtn_left_down'] = --exact seeks on shift + left click
+    ne.eventresponder['mbtn_left_down'] = --exact seeks on left click
         function (element)
             element.state.mbtnleft = true
             mp.commandv('seek', get_slider_value(element), 'absolute-percent', 'exact')
+        end
+    ne.eventresponder['shift+mbtn_left_down'] = --keyframe seeks on shift+left click
+        function (element)
+            element.state.mbtnleft = true
+            mp.commandv('seek', get_slider_value(element), 'absolute-percent')
         end
     ne.eventresponder['mbtn_left_up'] =
         function (element)
@@ -3303,7 +3347,7 @@ function adjustSubtitles(visible)
     if visible and user_opts.raisesubswithosc and state.osc_visible == true and (state.fullscreen == false or user_opts.showfullscreen) then
         local w, h = mp.get_osd_size()
         if h > 0 then
-            local subpos = math.floor((osc_param.playresy - 175)/osc_param.playresy*100)
+            local subpos = math.floor((osc_param.playresy - user_opts.raisesubamount)/osc_param.playresy*100)
             if subpos < 0 then
                 subpos = 100 -- out of screen, default to original position
             end
