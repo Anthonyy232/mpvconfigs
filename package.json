@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "scripts": {
+    "capture": "node readme/capture.cjs",
+    "build": "node readme/build.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.65.1"
+  }
+}
