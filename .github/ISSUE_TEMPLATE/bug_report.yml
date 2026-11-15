@@ -1,0 +1,24 @@
+name: Bug report
+description: Something in this configuration doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: mpv version and system
+      placeholder: mpv 0.41.0, Windows 11
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Output of `mpv --msg-level=all=warn <file>`, if it shows anything.
+      render: text
